@@ -16,14 +16,14 @@
 
 namespace nwen {
 
-
+// takes a file name and writes the table into it
 bool AbstractDbTable::saveCSV(const std:: string &filename){
 
-	std::ofstream file(filename);
+	std::ofstream file(filename);// open the file for writing 
 
-	if(!file.is_open())	return false;
+	if(!file.is_open())	return false;// checks if file opend succcessfully 
 	
-	
+	//loops through each line and write to file with the given format 
 		for(int i=0; i< rows(); i++){
 
 
@@ -31,14 +31,14 @@ bool AbstractDbTable::saveCSV(const std:: string &filename){
 
 			if (m== nullptr) return false;
 
-		
+		// writing to file with the given format
 			file<< m->id << ","
 		 		<< "\""<<m->title<<"\""
 				<<","<< m->year<<","<<
 			"\""<< m->director<<"\""
 				<<"\n";
 
-
+		// if writing fails return false
 			if (!file) return false;
 		
 
@@ -47,102 +47,68 @@ bool AbstractDbTable::saveCSV(const std:: string &filename){
 		}
 	
 		file.close();
-		return true;
+		return true; // if writing file succceds return true
 }
 
 
+// read the table from file and add into table vector 
+bool AbstractDbTable::loadCSV(const std::string &filename)
+{
+    std::ifstream file(filename);// open file for reading
 
-bool AbstractDbTable::loadCSV(const std:: string &filename){
+	//if file fails to open return false
+    if (!file.is_open()) {
+        return false;
+    }
 
+    std::string line;// buffer to store a row of table  read from file 
 
-	std::ifstream file(filename);
+	// loops through the row of table in the buffer and parse 
+    while (std::getline(file, line)) {
+        movie m; //
 
+        size_t comma1 = line.find(',');// find the first comma
+        if (comma1 == std::string::npos) return false;// check the comma exsists
 
-	if (!file.is_open()) return false;
+        size_t comma2 = line.find(',', comma1 + 1);// find the second comma
+        if (comma2 == std::string::npos) return false; // check the comma exsists
 
+        size_t comma3 = line.find(',', comma2 + 1);// find the third comma
+        if (comma3 == std::string::npos) return false;// check the comma exsists 
 
-	std:: string line;
+        std::string id = line.substr(0, comma1);// parsed id
+        std::string title = line.substr(comma1 + 1, comma2 - comma1 - 1);//parsed title 
+        std::string year = line.substr(comma2 + 1, comma3 - comma2 - 1);// pased year
+        std::string director = line.substr(comma3 + 1);// parsed director
 
-	while (std::getline(file,line)){
-
-	movie m;
-
-	//finding  first comma 
-	
-	size_t comma1=line.find(',');
-	if (comma1 == std::string::npos) return false;
-	
-	// finding the first title quote 
-	
-	if(comma1 + 1 >= line.size() || line [comma1 + 1] != '"') return false;
-
-	
-
-	//finding the closing quote
-	
-	size_t start_of_title = comma1+ 2;
-	size_t end_of_title = line.find('"',start_of_title);
-	if (end_of_title == std::string::npos) return false;
-
-
-	//there should  be a comma after title quote
-	if (end_of_title + 1>= line.size() || line[end_of_title +1] != ',') return false;
+		//checks for character overflowing
+        if (title.size() >= 50 || director.size() >= 50) return false;
 
 
-	//comma after year 	
-	
-	size_t start_of_year= end_of_title+ 2 ;
-	size_t comma3 = line.find(',',start_of_year);
-	if (comma3 == std::string::npos) return false;
-	
-	//director should start with quote 
+		// try converting the id & year strings into integers before adding  
+        try {
+            m.id = std::stoul(id);
+            m.year = static_cast<unsigned short>(std::stoul(year));
+        } catch (...) {
+            return false;
+        }
+		
+		//convert c++ string into c string and copy into buffer "m" 
+        std::strncpy(m.title, title.c_str(), 49);
+        m.title[49] = '\0';
 
-	if (comma3 + 1 >= line.size() || line[comma3 + 1] != '"') return false;
+        std::strncpy(m.director, director.c_str(), 49);
+        m.director[49] = '\0';
 
-	// closing quote of director 
-	
-	size_t start_of_director= comma3+ 2;
-	size_t end_of_director= line.find('"',start_of_director);
-	if(end_of_director == std::string::npos) return false;
+		// adding the buffer containing fields into vector containing records
+        if (!add(m)) {
+            return false;
+        }
+    }
 
-	//nothing should come after final quote 
-	
-	if (end_of_director +1 != line.size()) return false;
-
-	std::string id =line.substr(0,comma1);
-	std::string title =line.substr(start_of_title,end_of_title-start_of_title);
-	std::string year =line.substr(start_of_year,comma3-start_of_year);
-	std::string director =line.substr(start_of_director,end_of_director-start_of_director);
-	
-	if (title.size()>=50 || director.size()>=50) return false;
-
-	try{
-
-		m.id = std::stoul(id);
-		m.year = static_cast <unsigned short>(std::stoul(year));
-
-	} catch(...){
-		return false;
-	}
-
-
-	// copyt string into array
-
-	std::strncpy(m.title,title.c_str(),49);
-	m.title[49] = '\0';
-
-	std::strncpy(m.director,director.c_str(),49);
-	m.director[49] = '\0';
-	
-	if(!add(m)) return false;
-
-	}//end of while loop
-
-	file.close();
-	return true;
-
-
-}//end of loadCSV()
+    file.close();
+    return true;// return true if every thing succceds
+}
 
 
 
